@@ -1,0 +1,35 @@
+name: Run Domain Scraper
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Εκτέλεση καθημερινά
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run script
+        run: python scraper.py
+
+      - name: Commit and push updated domains
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add expired_candidates.txt
+          git commit -m "Auto-update expired_candidates.txt" || exit 0
+          git push
