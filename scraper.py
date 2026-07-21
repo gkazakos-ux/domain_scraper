@@ -1,37 +1,38 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
+import socket
+import itertools
 
-seed_urls = [
-    "https://lawjobs.gr",
-    "https://www.randstad.gr",
-    "https://www.kariera.gr",
-    "https://www.xe.gr/ergasia"
-]
+# Λέξεις-κλειδιά που ταιριάζουν στους τομείς σου (job boards & νομικά)
+keywords_part1 = ["law", "legal", "job", "jobs", "career", "kariera", "hr", "work", "Lex", "attorney"]
+keywords_part2 = ["greece", "hellas", "GR", "Athens", "Thessaloniki", "portal", "board", "Direct"]
 
-found_domains = set()
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+# Δημιουργία συνδυασμών για .gr domains
+candidates = set()
+for p1, p2 in itertools.product(keywords_part1, keywords_part2):
+    candidates.add(f"{p1.lower()}{p2.lower()}.gr")
+    candidates.add(f"{p1.lower()}-{p2.lower()}.gr")
 
-for url in seed_urls:
+expired_domains = []
+
+print(f"Ξεκινάει ο έλεγχος για {len(candidates)} υποψήφια domains...")
+
+def is_domain_available(domain):
+    """
+    Ελέγχει αν το domain είναι διαθέσιμο (δηλαδή δεν έχει ενεργό DNS / A record).
+    """
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            for link in soup.find_all('a', href=True):
-                full_url = urljoin(url, link['href'])
-                netloc = urlparse(full_url).netloc.lower()
-                
-                # Φιλτράρισμα: Μόνο καθαρά .gr (χωρίς .com.gr, .net.gr, κλπ.)
-                if netloc.endswith('.gr') and not any(netloc.endswith(ext) for ext in ['.com.gr', '.net.gr', '.org.gr', '.edu.gr', '.gov.gr', '.co.gr']):
-                    parts = netloc.split('.')
-                    if len(parts) >= 2 and parts[-1] == 'gr':
-                        root_domain = f"{parts[-2]}.{parts[-1]}"
-                        found_domains.add(root_domain)
-    except Exception:
-        pass
+        socket.gethostbyname(domain)
+        return False  # Υπάρχει ενεργό site/DNS, άρα ΔΕΝ είναι ελεύθερο
+    except socket.gaierror:
+        return True   # Δεν βρέθηκε DNS, άρα πιθανότατα είναι ελεύθερο/ληγμένο
 
+# Έλεγχος διαθεσιμότητας για κάθε υποψήφιο domain
+for domain in sorted(candidates):
+    if is_domain_available(domain):
+        expired_domains.append(domain)
+
+# Αποθήκευση των διαθέσιμων/ληγμένων στο αρχείο
 with open("expired_candidates.txt", "w", encoding="utf-8") as f:
-    for domain in sorted(found_domains):
+    for domain in expired_domains:
         f.write(domain + "\n")
 
-print(f"Ολοκληρώθηκε! Αποθηκεύτηκαν {len(found_domains)} καθαρά .gr root domains.")
+print(f"Ολοκληρώθηκε! Βρέθηκαν {len(expired_domains)} ελεύθερα/ληγμένα domains.")
