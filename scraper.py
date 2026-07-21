@@ -2,16 +2,18 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 
-# Στοχευμένες αρχικές σελίδες (seed URLs) για νομικά και επαγγελματικά domains
+# Διευρυμένες πηγές για Job Board και Νομική Εταιρεία
 seed_urls = [
     "https://lawjobs.gr",
-    "https://www.randstad.gr"
+    "https://www.randstad.gr",
+    "https://www.kariera.gr",
+    "https://www.xe.gr/ergasia"
 ]
 
 found_domains = set()
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
-print("Ξεκινάμε την αναζήτηση και φιλτράρισμα για μοναδικά .gr domains...")
+print("Ξεκινάμε τη συλλογή από τις διευρυμένες πηγές...")
 
 for url in seed_urls:
     try:
@@ -31,4 +33,4 @@ with open("expired_candidates.txt", "w", encoding="utf-8") as f:
     for domain in sorted(found_domains):
         f.write(domain + "\n")
 
-print(f"Ολοκληρώθηκε! Αποθηκεύτηκαν {len(found_domains)} καθαρά .gr domains στο expired_candidates.txt")
+print(f"Ολοκληρώθηκε! Αποθηκεύτηκαν συνολικά {len(found_domains)} .gr domains.")
