@@ -1,38 +1,45 @@
 import socket
-import itertools
+import sys
 
-# Λέξεις-κλειδιά που ταιριάζουν στους τομείς σου (job boards & νομικά)
-keywords_part1 = ["law", "legal", "job", "jobs", "career", "kariera", "hr", "work", "Lex", "attorney"]
-keywords_part2 = ["greece", "hellas", "GR", "Athens", "Thessaloniki", "portal", "board", "Direct"]
+def load_targets():
+    """Διαβάζει τα υποψήφια domains προς έλεγχο από το αρχείο targets.txt"""
+    try:
+        with open("targets.txt", "r", encoding="utf-8") as f:
+            return [line.strip().lower() for line in f if line.strip() and line.strip().endswith(".gr")]
+    except FileNotFoundError:
+        print("Το αρχείο targets.txt δεν βρέθηκε.")
+        return []
 
-# Δημιουργία συνδυασμών για .gr domains
-candidates = set()
-for p1, p2 in itertools.product(keywords_part1, keywords_part2):
-    candidates.add(f"{p1.lower()}{p2.lower()}.gr")
-    candidates.add(f"{p1.lower()}-{p2.lower()}.gr")
-
-expired_domains = []
-
-print(f"Ξεκινάει ο έλεγχος για {len(candidates)} υποψήφια domains...")
-
-def is_domain_available(domain):
+def check_gr_domain(domain):
     """
-    Ελέγχει αν το domain είναι διαθέσιμο (δηλαδή δεν έχει ενεργό DNS / A record).
+    Ελέγχει τη διαθεσιμότητα ενός .gr domain μέσω DNS/Socket.
+    Αν δεν υπάρχει ενεργό DNS, θεωρείται υποψήφιο ληγμένο/ελεύθερο.
     """
     try:
         socket.gethostbyname(domain)
-        return False  # Υπάρχει ενεργό site/DNS, άρα ΔΕΝ είναι ελεύθερο
+        return False  # Υπάρχει ενεργό DNS, άρα είναι κατειλημμένο
     except socket.gaierror:
-        return True   # Δεν βρέθηκε DNS, άρα πιθανότατα είναι ελεύθερο/ληγμένο
+        return True   # Δεν βρέθηκε DNS, άρα είναι πιθανώς ελεύθερο
 
-# Έλεγχος διαθεσιμότητας για κάθε υποψήφιο domain
-for domain in sorted(candidates):
-    if is_domain_available(domain):
-        expired_domains.append(domain)
+def main():
+    targets = load_targets()
+    if not targets:
+        print("Δεν υπάρχουν domains προς έλεγχο.")
+        return
 
-# Αποθήκευση των διαθέσιμων/ληγμένων στο αρχείο
-with open("expired_candidates.txt", "w", encoding="utf-8") as f:
-    for domain in expired_domains:
-        f.write(domain + "\n")
+    expired_candidates = []
+    print(f"Ξεκινάει ο έλεγχος για {len(targets)} .gr domains...")
 
-print(f"Ολοκληρώθηκε! Βρέθηκαν {len(expired_domains)} ελεύθερα/ληγμένα domains.")
+    for domain in targets:
+        if check_gr_domain(domain):
+            expired_candidates.append(domain)
+
+    # Αποθήκευση των διαθέσιμων στοexpired_candidates.txt
+    with open("expired_candidates.txt", "w", encoding="utf-8") as f:
+        for domain in expired_candidates:
+            f.write(domain + "\n")
+
+    print(f"Ολοκληρώθηκε. Εντοπίστηκαν {len(expired_candidates)} διαθέσιμα .gr domains.")
+
+if __name__ == "__main__":
+    main()
